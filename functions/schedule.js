@@ -1,20 +1,23 @@
-// functions/schedule.js
 const { MongoClient, ObjectId } = require('mongodb');
 const moment = require('moment-timezone');
-const cron = require('node-cron');
 const axios = require('axios');
 require('dotenv').config();
 
-const uri = process.env.MONGODB_URI;
 let db;
 
-MongoClient.connect(uri, { useNewUrlParser: true, useUnifiedTopology: true })
-  .then(client => {
+const connectToDatabase = async () => {
+  if (!db) {
+    const client = await MongoClient.connect(process.env.MONGODB_URI, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    });
     db = client.db('phonescanner');
-  })
-  .catch(err => console.error('Error connecting to MongoDB:', err));
+  }
+  return db;
+};
 
 const storeScheduledCalls = async (jobId, phoneNumbers, scheduledDateTime) => {
+  const db = await connectToDatabase();
   const scheduledCallsCollection = db.collection('scheduledCalls');
 
   try {
@@ -23,7 +26,7 @@ const storeScheduledCalls = async (jobId, phoneNumbers, scheduledDateTime) => {
       phoneNumbers,
       scheduledDateTime: new Date(scheduledDateTime),
       status: 'Pending',
-      message: 'Not attempted yet'
+      message: 'Not attempted yet',
     });
     console.log('Scheduled calls stored in MongoDB');
   } catch (error) {
@@ -69,6 +72,11 @@ exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') {
     return {
       statusCode: 405,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      },
       body: JSON.stringify({ message: 'Method Not Allowed' }),
     };
   }
@@ -80,6 +88,11 @@ exports.handler = async (event) => {
   if (scheduledDateTime <= moment()) {
     return {
       statusCode: 400,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      },
       body: JSON.stringify({ message: 'Scheduled time must be in the future' }),
     };
   }
@@ -95,12 +108,17 @@ exports.handler = async (event) => {
   try {
     await storeScheduledCalls(jobId, phoneNumbers, scheduledDateTime.toDate());
 
-    cron.schedule(cronTime, async () => {
+    // Note: Cron jobs won't run in the serverless environment. Instead, schedule jobs using a third-party scheduler or re-execute periodically
+    // Here we mock the cron job execution for demonstration
+
+    // Simulate immediate cron job execution for testing
+    setTimeout(async () => {
       try {
         console.log(`Executing cron job at ${new Date().toISOString()}`);
         const result = await makeCall(phoneNumbers, scheduledDateTime.toDate());
         const statusMessage = result.success ? 'Success' : 'Failed';
 
+        const db = await connectToDatabase();
         const scheduledCallsCollection = db.collection('scheduledCalls');
         await scheduledCallsCollection.updateOne(
           { jobId },
@@ -110,16 +128,26 @@ exports.handler = async (event) => {
       } catch (error) {
         console.error('Error executing cron job:', error.message);
       }
-    });
+    }, 5000); // Simulate 5 seconds delay for demonstration
 
     return {
       statusCode: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      },
       body: JSON.stringify({ message: 'Call scheduled successfully', jobId: jobId.toHexString() }),
     };
   } catch (error) {
     console.error('Error storing scheduled calls:', error.message);
     return {
       statusCode: 500,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      },
       body: JSON.stringify({ message: 'Failed to store scheduled calls' }),
     };
   }
