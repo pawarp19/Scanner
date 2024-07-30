@@ -43,7 +43,7 @@ document.getElementById('upload-form').addEventListener('submit', async (e) => {
         document.getElementById('loading-spinner').style.display = 'block';
 
         try {
-          const response = await fetch('https://scannerphone.netlify.app/upload', {
+          const response = await fetch('https://scannerphone.netlify.app/.netlify/functions/upload', {
             method: 'POST',
             body: formData
           });
@@ -103,7 +103,7 @@ document.getElementById('schedule-button').addEventListener('click', async () =>
   }
 
   try {
-    const response = await fetch('https://scannerphone.netlify.app/schedule', {
+    const response = await fetch('https://scannerphone.netlify.app/.netlify/functions/schedule', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -127,7 +127,7 @@ document.getElementById('schedule-button').addEventListener('click', async () =>
 // Fetch and display Bulk SMS balance
 const fetchAndDisplayBalance = async () => {
   try {
-    const response = await fetch('https://scannerphone.netlify.app/balance');
+    const response = await fetch('https://scannerphone.netlify.app/.netlify/functions/balance');
     const data = await response.json();
 
     if (data.balance !== undefined) {
