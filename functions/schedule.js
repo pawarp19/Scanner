@@ -3,11 +3,13 @@ const moment = require('moment-timezone');
 const axios = require('axios');
 require('dotenv').config();
 
+const uri = process.env.MONGODB_URI;
 let db;
 
+// Function to connect to the MongoDB database
 const connectToDatabase = async () => {
   if (!db) {
-    const client = await MongoClient.connect(process.env.MONGODB_URI, {
+    const client = await MongoClient.connect(uri, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     });
@@ -16,8 +18,8 @@ const connectToDatabase = async () => {
   return db;
 };
 
+// Function to store scheduled calls in MongoDB
 const storeScheduledCalls = async (jobId, phoneNumbers, scheduledDateTime) => {
-  const db = await connectToDatabase();
   const scheduledCallsCollection = db.collection('scheduledCalls');
 
   try {
@@ -26,7 +28,7 @@ const storeScheduledCalls = async (jobId, phoneNumbers, scheduledDateTime) => {
       phoneNumbers,
       scheduledDateTime: new Date(scheduledDateTime),
       status: 'Pending',
-      message: 'Not attempted yet',
+      message: 'Not attempted yet'
     });
     console.log('Scheduled calls stored in MongoDB');
   } catch (error) {
@@ -35,6 +37,7 @@ const storeScheduledCalls = async (jobId, phoneNumbers, scheduledDateTime) => {
   }
 };
 
+// Function to make a call using the BulkSMS API
 const makeCall = async (phoneNumbers, scheduledDateTime) => {
   const apiId = process.env.BULKSMS_API_ID;
   const apiPassword = process.env.BULKSMS_API_PASSWORD;
@@ -68,15 +71,11 @@ const makeCall = async (phoneNumbers, scheduledDateTime) => {
   }
 };
 
+// Netlify Function Handler
 exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') {
     return {
       statusCode: 405,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type',
-        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      },
       body: JSON.stringify({ message: 'Method Not Allowed' }),
     };
   }
@@ -88,11 +87,6 @@ exports.handler = async (event) => {
   if (scheduledDateTime <= moment()) {
     return {
       statusCode: 400,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type',
-        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      },
       body: JSON.stringify({ message: 'Scheduled time must be in the future' }),
     };
   }
@@ -101,45 +95,18 @@ exports.handler = async (event) => {
   const jobId = new ObjectId();
 
   try {
+    await connectToDatabase();
     await storeScheduledCalls(jobId, phoneNumbers, scheduledDateTime.toDate());
 
-    // Return response immediately and use a separate process to handle scheduling
-    setTimeout(async () => {
-      try {
-        console.log(`Executing scheduled job at ${new Date().toISOString()}`);
-        const result = await makeCall(phoneNumbers, scheduledDateTime.toDate());
-        const statusMessage = result.success ? 'Success' : 'Failed';
-
-        const db = await connectToDatabase();
-        const scheduledCallsCollection = db.collection('scheduledCalls');
-        await scheduledCallsCollection.updateOne(
-          { jobId },
-          { $set: { status: statusMessage, message: `Scheduled call at ${moment.tz(scheduledDateTime, timezone).format('LLLL')}: ${statusMessage}` } }
-        );
-        console.log(`Scheduled call at ${moment.tz(scheduledDateTime, timezone).format('LLLL')} for ${phoneNumbers.length} phone numbers: ${statusMessage}`);
-      } catch (error) {
-        console.error('Error executing scheduled job:', error.message);
-      }
-    }, scheduledDateTime.diff(moment()));
-
+    // Respond to the client
     return {
       statusCode: 200,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type',
-        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      },
       body: JSON.stringify({ message: 'Call scheduled successfully', jobId: jobId.toHexString() }),
     };
   } catch (error) {
     console.error('Error storing scheduled calls:', error.message);
     return {
       statusCode: 500,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type',
-        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      },
       body: JSON.stringify({ message: 'Failed to store scheduled calls' }),
     };
   }
