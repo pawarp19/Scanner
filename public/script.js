@@ -43,7 +43,7 @@ document.getElementById('upload-form').addEventListener('submit', async (e) => {
         document.getElementById('loading-spinner').style.display = 'block';
 
         try {
-          const response = await fetch('https://phonescanner-4p8y.onrender.com/upload', {
+          const response = await fetch('https://scannerphone.netlify.app/upload', {
             method: 'POST',
             body: formData
           });
@@ -103,7 +103,7 @@ document.getElementById('schedule-button').addEventListener('click', async () =>
   }
 
   try {
-    const response = await fetch('https://phonescanner-4p8y.onrender.com/schedule', {
+    const response = await fetch('https://scannerphone.netlify.app/schedule', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -127,7 +127,7 @@ document.getElementById('schedule-button').addEventListener('click', async () =>
 // Fetch and display Bulk SMS balance
 const fetchAndDisplayBalance = async () => {
   try {
-    const response = await fetch('https://phonescanner-4p8y.onrender.com/api/balance');
+    const response = await fetch('https://scannerphone.netlify.app/api/balance');
     const data = await response.json();
 
     if (data.balance !== undefined) {
