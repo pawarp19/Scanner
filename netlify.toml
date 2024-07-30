@@ -1,6 +1,6 @@
 [build]
-  functions = "functions-build"  # Directory for built serverless functions
-  publish = "public"              # Directory for static files
+  publish = "public"
+  functions = "functions"
 
-
-
+[functions]
+  directory = "functions"
