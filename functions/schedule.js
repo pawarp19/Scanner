@@ -53,7 +53,7 @@ const makeCall = async (phoneNumbers, scheduledDateTime) => {
   params.append('timezone_id', timezoneId);
 
   try {
-    const response = await axios.post('https://www.bulksmsplans.com/api/send_voice_note', params);
+    const response = await axios.post('https://www.bulksmsplans.com/api/send_voice_note', params, { timeout: 30000 }); // 30 seconds timeout
 
     if (response.data && response.data.code === 200) {
       console.log('Voice note sent successfully:', response.data);
@@ -63,7 +63,11 @@ const makeCall = async (phoneNumbers, scheduledDateTime) => {
       return { success: false, data: response.data };
     }
   } catch (error) {
-    console.error('Error sending voice note:', error.message);
+    if (axios.isCancel(error)) {
+      console.error('Request canceled:', error.message);
+    } else {
+      console.error('Error sending voice note:', error.message);
+    }
     return { success: false, error: error.message };
   }
 };
