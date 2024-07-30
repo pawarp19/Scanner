@@ -77,6 +77,7 @@ document.getElementById('upload-form').addEventListener('submit', async (e) => {
         } catch (error) {
           console.error('Error:', error.message);
           document.getElementById('loading-spinner').style.display = 'none';
+          const phoneNumbersList = document.getElementById('phone-numbers');
           phoneNumbersList.innerHTML = '<li>Error processing the image. Please try again.</li>';
         }
       }, 'image/jpeg', 0.9);

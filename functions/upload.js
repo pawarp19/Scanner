@@ -42,6 +42,11 @@ exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') {
     return {
       statusCode: 405,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      },
       body: JSON.stringify({ message: 'Method Not Allowed' }),
     };
   }
@@ -60,17 +65,32 @@ exports.handler = async (event) => {
           if (phoneNumbers.length === 0) {
             return resolve({
               statusCode: 400,
+              headers: {
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Headers': 'Content-Type',
+                'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+              },
               body: JSON.stringify({ message: 'No valid phone numbers found' }),
             });
           }
           return resolve({
             statusCode: 200,
+            headers: {
+              'Access-Control-Allow-Origin': '*',
+              'Access-Control-Allow-Headers': 'Content-Type',
+              'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+            },
             body: JSON.stringify({ phoneNumbers }),
           });
         } catch (error) {
           console.error('Error processing image:', error.message);
           return resolve({
             statusCode: 500,
+            headers: {
+              'Access-Control-Allow-Origin': '*',
+              'Access-Control-Allow-Headers': 'Content-Type',
+              'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+            },
             body: JSON.stringify({ message: 'Error processing the image', error: error.message }),
           });
         }
@@ -82,6 +102,11 @@ exports.handler = async (event) => {
       if (!Object.keys(formData).length) {
         return resolve({
           statusCode: 400,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Headers': 'Content-Type',
+            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+          },
           body: JSON.stringify({ message: 'No file uploaded' }),
         });
       }
