@@ -53,7 +53,7 @@ const makeCall = async (phoneNumbers, scheduledDateTime) => {
   params.append('timezone_id', timezoneId);
 
   try {
-    const response = await axios.post('https://www.bulksmsplans.com/api/send_voice_note', params, { timeout: 30000 }); // 30 seconds timeout
+    const response = await axios.post('https://www.bulksmsplans.com/api/send_voice_note', params);
 
     if (response.data && response.data.code === 200) {
       console.log('Voice note sent successfully:', response.data);
@@ -63,11 +63,7 @@ const makeCall = async (phoneNumbers, scheduledDateTime) => {
       return { success: false, data: response.data };
     }
   } catch (error) {
-    if (axios.isCancel(error)) {
-      console.error('Request canceled:', error.message);
-    } else {
-      console.error('Error sending voice note:', error.message);
-    }
+    console.error('Error sending voice note:', error.message);
     return { success: false, error: error.message };
   }
 };
@@ -102,23 +98,15 @@ exports.handler = async (event) => {
   }
 
   scheduledDateTime.subtract(5, 'hours').subtract(30, 'minutes');
-  const cronTime = `${scheduledDateTime.minutes()} ${scheduledDateTime.hours()} ${scheduledDateTime.date()} ${scheduledDateTime.month() + 1} *`;
-
-  console.log(`Cron time: ${cronTime}`);
-  console.log(`Scheduled time: ${scheduledDateTime.toString()}`);
-
   const jobId = new ObjectId();
 
   try {
     await storeScheduledCalls(jobId, phoneNumbers, scheduledDateTime.toDate());
 
-    // Note: Cron jobs won't run in the serverless environment. Instead, schedule jobs using a third-party scheduler or re-execute periodically
-    // Here we mock the cron job execution for demonstration
-
-    // Simulate immediate cron job execution for testing
+    // Return response immediately and use a separate process to handle scheduling
     setTimeout(async () => {
       try {
-        console.log(`Executing cron job at ${new Date().toISOString()}`);
+        console.log(`Executing scheduled job at ${new Date().toISOString()}`);
         const result = await makeCall(phoneNumbers, scheduledDateTime.toDate());
         const statusMessage = result.success ? 'Success' : 'Failed';
 
@@ -130,9 +118,9 @@ exports.handler = async (event) => {
         );
         console.log(`Scheduled call at ${moment.tz(scheduledDateTime, timezone).format('LLLL')} for ${phoneNumbers.length} phone numbers: ${statusMessage}`);
       } catch (error) {
-        console.error('Error executing cron job:', error.message);
+        console.error('Error executing scheduled job:', error.message);
       }
-    }, 5000); // Simulate 5 seconds delay for demonstration
+    }, scheduledDateTime.diff(moment()));
 
     return {
       statusCode: 200,
