@@ -4,9 +4,7 @@
 
 [functions]
   directory = "functions"
-  [functions.scheduled]
-    name = "scheduled-call"
-    schedule = "*/1 * * * *"
-
-[[plugins]]
-  package = "@netlify/plugin-scheduled-functions"
+  
+[functions.scheduled]
+  name = "scheduled-call"
+  schedule = "*/1 * * * *"
