@@ -1,4 +1,5 @@
 [build]
-  publish = "public"
-  functions = "functions"
+  functions = "netlify_functions"  # Directory for serverless functions
+  publish = "public"               # Directory for static files
+
 
