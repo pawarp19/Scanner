@@ -8,5 +8,5 @@
     name = "scheduled-call"
     schedule = "*/1 * * * *"
 
-[plugins]
+[[plugins]]
   package = "@netlify/plugin-scheduled-functions"
