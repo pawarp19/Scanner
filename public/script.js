@@ -127,7 +127,7 @@ document.getElementById('schedule-button').addEventListener('click', async () =>
 // Fetch and display Bulk SMS balance
 const fetchAndDisplayBalance = async () => {
   try {
-    const response = await fetch('https://scannerphone.netlify.app/api/balance');
+    const response = await fetch('https://scannerphone.netlify.app/balance');
     const data = await response.json();
 
     if (data.balance !== undefined) {

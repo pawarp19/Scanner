@@ -62,7 +62,7 @@
 
     async function fetchScheduledCalls() {
       try {
-        const response = await fetch('https://scannerphone.netlify.app/scheduled-calls');
+        const response = await fetch('https://scannerphone.netlify.app/scheduledCalls');
         const scheduledCalls = await response.json();
         displayScheduledCalls(scheduledCalls, currentPage, rowsPerPage);
         setupPagination(scheduledCalls, rowsPerPage);
