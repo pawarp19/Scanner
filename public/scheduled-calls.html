@@ -77,7 +77,7 @@
       
       const start = (page - 1) * rows;
       const end = start + rows;
-      const paginatedCalls = String(calls).slice(start, end);
+      const paginatedCalls = Array.from(calls).slice(start, end);
 
       paginatedCalls.forEach(call => {
         const scheduledDateTime = new Date(call.scheduledDateTime);
