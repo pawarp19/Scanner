@@ -1,24 +1,25 @@
+// netlify/functions/schedule.js
 const { MongoClient, ObjectId } = require('mongodb');
 const moment = require('moment-timezone');
+const cron = require('node-cron');
 const axios = require('axios');
-require('dotenv').config();
 
 const uri = process.env.MONGODB_URI;
 let db;
 
-// Function to connect to the MongoDB database
-const connectToDatabase = async () => {
+// Connect to MongoDB
+const connectToMongoDB = async () => {
   if (!db) {
-    const client = await MongoClient.connect(uri, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
-    db = client.db('phonescanner');
+    try {
+      const client = await MongoClient.connect(uri, { useNewUrlParser: true, useUnifiedTopology: true });
+      db = client.db('phonescanner');
+    } catch (err) {
+      console.error('Error connecting to MongoDB:', err);
+      throw err;
+    }
   }
-  return db;
 };
 
-// Function to store scheduled calls in MongoDB
 const storeScheduledCalls = async (jobId, phoneNumbers, scheduledDateTime) => {
   const scheduledCallsCollection = db.collection('scheduledCalls');
 
@@ -37,7 +38,6 @@ const storeScheduledCalls = async (jobId, phoneNumbers, scheduledDateTime) => {
   }
 };
 
-// Function to make a call using the BulkSMS API
 const makeCall = async (phoneNumbers, scheduledDateTime) => {
   const apiId = process.env.BULKSMS_API_ID;
   const apiPassword = process.env.BULKSMS_API_PASSWORD;
@@ -71,7 +71,6 @@ const makeCall = async (phoneNumbers, scheduledDateTime) => {
   }
 };
 
-// Netlify Function Handler
 exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') {
     return {
@@ -79,6 +78,8 @@ exports.handler = async (event) => {
       body: JSON.stringify({ message: 'Method Not Allowed' }),
     };
   }
+
+  await connectToMongoDB();
 
   const { phoneNumbers, date, time, timezone } = JSON.parse(event.body);
   const dateTimeString = `${date} ${time}`;
@@ -92,13 +93,33 @@ exports.handler = async (event) => {
   }
 
   scheduledDateTime.subtract(5, 'hours').subtract(30, 'minutes');
+  const cronTime = `${scheduledDateTime.minutes()} ${scheduledDateTime.hours()} ${scheduledDateTime.date()} ${scheduledDateTime.month() + 1} *`;
+
+  console.log(`Cron time: ${cronTime}`);
+  console.log(`Scheduled time: ${scheduledDateTime.toString()}`);
+
   const jobId = new ObjectId();
 
   try {
-    await connectToDatabase();
     await storeScheduledCalls(jobId, phoneNumbers, scheduledDateTime.toDate());
 
-    // Respond to the client
+    cron.schedule(cronTime, async () => {
+      try {
+        console.log(`Executing cron job at ${new Date().toISOString()}`);
+        const result = await makeCall(phoneNumbers, scheduledDateTime.toDate());
+        const statusMessage = result.success ? 'Success' : 'Failed';
+
+        const scheduledCallsCollection = db.collection('scheduledCalls');
+        await scheduledCallsCollection.updateOne(
+          { jobId },
+          { $set: { status: statusMessage, message: `Scheduled call at ${moment.tz(scheduledDateTime, timezone).format('LLLL')}: ${statusMessage}` } }
+        );
+        console.log(`Scheduled call at ${moment.tz(scheduledDateTime, timezone).format('LLLL')} for ${phoneNumbers.length} phone numbers: ${statusMessage}`);
+      } catch (error) {
+        console.error('Error executing cron job:', error.message);
+      }
+    });
+
     return {
       statusCode: 200,
       body: JSON.stringify({ message: 'Call scheduled successfully', jobId: jobId.toHexString() }),
