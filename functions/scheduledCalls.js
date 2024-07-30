@@ -5,7 +5,21 @@ require('dotenv').config();
 const uri = process.env.MONGODB_URI;
 let db;
 
-
+async function connectToDatabase() {
+  if (!db) {
+    try {
+      const client = await MongoClient.connect(uri, {
+        useNewUrlParser: true,
+        useUnifiedTopology: true,
+      });
+      db = client.db('phonescanner');
+      console.log('Connected to MongoDB');
+    } catch (err) {
+      console.error('Error connecting to MongoDB:', err);
+      throw err;
+    }
+  }
+}
 
 exports.handler = async (event) => {
   if (event.httpMethod !== 'GET') {
@@ -21,22 +35,7 @@ exports.handler = async (event) => {
   }
 
   try {
-    MongoClient.connect(uri, { useNewUrlParser: true, useUnifiedTopology: true })
-  .then(client => {
-    db = client.db('phonescanner');
-  })
-  .catch((err) => {console.log('Error connecting to MongoDB:', err);
-    return {
-      statusCode: 500,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type',
-        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      },
-      body: JSON.stringify({ error: 'Mongodb failure' }),
-    };
-
-  });
+    await connectToDatabase();
     const calls = await db.collection('scheduledCalls').find().toArray();
     return {
       statusCode: 200,
@@ -48,7 +47,7 @@ exports.handler = async (event) => {
       body: JSON.stringify(calls),
     };
   } catch (error) {
-    console.log('Error fetching scheduled calls:', error.message);
+    console.error('Error fetching scheduled calls:', error.message);
     return {
       statusCode: 500,
       headers: {
