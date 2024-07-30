@@ -1,14 +1,25 @@
 // functions/upload.js
-const multer = require('multer');
 const { ImageAnnotatorClient } = require('@google-cloud/vision');
 const { Buffer } = require('buffer');
+const busboy = require('busboy');
 require('dotenv').config();
 
-const upload = multer({ storage: multer.memoryStorage() });
+// Initialize Google Vision API client
+const credentials = JSON.parse(Buffer.from(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON, 'base64').toString('utf-8'));
 const visionClient = new ImageAnnotatorClient({
-  credentials: JSON.parse(Buffer.from(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON, 'base64').toString('utf-8')),
+  credentials: {
+    client_email: credentials.client_email,
+    private_key: credentials.private_key,
+  },
 });
 
+// Function to extract phone numbers from text
+const extractPhoneNumbers = (text) => {
+  const allNumbers = text.match(/\d{10}/g) || [];
+  return allNumbers;
+};
+
+// Function to process the uploaded image
 const googleVisionApi = async (buffer) => {
   try {
     const [result] = await visionClient.textDetection({ image: { content: buffer } });
@@ -26,11 +37,7 @@ const googleVisionApi = async (buffer) => {
   }
 };
 
-const extractPhoneNumbers = (text) => {
-  const allNumbers = text.match(/\d{10}/g) || [];
-  return allNumbers;
-};
-
+// Netlify Function Handler
 exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') {
     return {
@@ -39,23 +46,47 @@ exports.handler = async (event) => {
     };
   }
 
-  const base64String = event.body;
-  const buffer = Buffer.from(base64String, 'base64');
+  const busboyInstance = busboy({ headers: event.headers });
+  const formData = {};
 
-  try {
-    const phoneNumbers = await googleVisionApi(buffer);
-    if (phoneNumbers.length === 0) {
-      throw new Error('No valid phone numbers found');
-    }
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ phoneNumbers }),
-    };
-  } catch (error) {
-    console.error('Error processing image:', error.message);
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ message: 'Error processing the image', error: error.message }),
-    };
-  }
+  return new Promise((resolve, reject) => {
+    busboyInstance.on('file', (fieldname, file, filename, encoding, mimeType) => {
+      const buffers = [];
+      file.on('data', (data) => buffers.push(data));
+      file.on('end', async () => {
+        try {
+          const buffer = Buffer.concat(buffers);
+          const phoneNumbers = await googleVisionApi(buffer);
+          if (phoneNumbers.length === 0) {
+            return resolve({
+              statusCode: 400,
+              body: JSON.stringify({ message: 'No valid phone numbers found' }),
+            });
+          }
+          return resolve({
+            statusCode: 200,
+            body: JSON.stringify({ phoneNumbers }),
+          });
+        } catch (error) {
+          console.error('Error processing image:', error.message);
+          return resolve({
+            statusCode: 500,
+            body: JSON.stringify({ message: 'Error processing the image', error: error.message }),
+          });
+        }
+      });
+    });
+
+    busboyInstance.on('finish', () => {
+      // Handle case when no file is uploaded
+      if (!Object.keys(formData).length) {
+        return resolve({
+          statusCode: 400,
+          body: JSON.stringify({ message: 'No file uploaded' }),
+        });
+      }
+    });
+
+    event.body.pipe(busboyInstance);
+  });
 };

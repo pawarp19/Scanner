@@ -12,6 +12,7 @@
   "dependencies": {
     "@google-cloud/vision": "^4.3.0",
     "axios": "^1.7.2",
+    "busboy": "^1.6.0",
     "canvas": "^2.11.2",
     "child_process": "^1.0.2",
     "cors": "^2.8.5",
