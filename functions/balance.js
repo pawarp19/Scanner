@@ -1,18 +1,45 @@
 // functions/balance.js
-const express = require('express');
-const { fetchBulkSmsBalance } = require('./utils');
-const cors = require('cors');
-const router = express.Router();
-router.use(cors());
+const axios = require('axios');
 
-router.get('/api/balance', async (req, res) => {
+const fetchBulkSmsBalance = async () => {
+  try {
+    const response = await axios.post('https://www.bulksmsplans.com/api/check_balance', null, {
+      params: {
+        api_id: process.env.BULKSMS_API_ID,
+        api_password: process.env.BULKSMS_API_PASSWORD
+      }
+    });
+
+    if (response.data && response.data.code === 200 && response.data.data && response.data.data.length > 0) {
+      const balance = parseFloat(response.data.data[0].BalanceAmount);
+      return balance;
+    } else {
+      throw new Error('Unable to retrieve balance');
+    }
+  } catch (error) {
+    console.error('Error checking balance:', error.message);
+    throw error;
+  }
+};
+
+exports.handler = async function(event, context) {
+  if (event.httpMethod !== 'GET') {
+    return {
+      statusCode: 405,
+      body: JSON.stringify({ message: 'Method Not Allowed' })
+    };
+  }
+
   try {
     const balance = await fetchBulkSmsBalance();
-    res.json({ balance });
+    return {
+      statusCode: 200,
+      body: JSON.stringify({ balance })
+    };
   } catch (error) {
-    console.error('Failed to fetch balance:', error.message);
-    res.status(500).json({ error: 'Failed to fetch balance' });
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ error: 'Failed to fetch balance' })
+    };
   }
-});
-
-module.exports = router;
+};

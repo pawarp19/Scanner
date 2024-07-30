@@ -1,29 +1,30 @@
 // functions/upload.js
-const express = require('express');
-const multer = require('multer');
-const { googleVisionApi, extractPhoneNumbers } = require('./utils');
-const cors = require('cors');
+const { googleVisionApi } = require('./utils');
 
-const router = express.Router();
-router.use(cors());
-const upload = multer({ storage: multer.memoryStorage() });
-
-router.post('/upload', upload.single('image'), async (req, res) => {
-  if (!req.file) {
-    console.error('No file uploaded');
-    return res.status(400).json({ message: 'No file uploaded' });
+exports.handler = async function(event, context) {
+  if (event.httpMethod !== 'POST') {
+    return {
+      statusCode: 405,
+      body: JSON.stringify({ message: 'Method Not Allowed' })
+    };
   }
 
+  const base64String = event.body;
+  const buffer = Buffer.from(base64String, 'base64');
+
   try {
-    let phoneNumbers = await googleVisionApi(req.file.buffer);
+    const phoneNumbers = await googleVisionApi(buffer);
     if (phoneNumbers.length === 0) {
       throw new Error('No valid phone numbers found');
     }
-    res.json({ phoneNumbers });
+    return {
+      statusCode: 200,
+      body: JSON.stringify({ phoneNumbers })
+    };
   } catch (error) {
-    console.error('Error processing image:', error.message);
-    res.status(500).json({ message: 'Error processing the image', error: error.message });
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ message: 'Error processing the image', error: error.message })
+    };
   }
-});
-
-module.exports = router;
+};
