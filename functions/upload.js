@@ -1,4 +1,3 @@
-// functions/upload.js
 const { ImageAnnotatorClient } = require('@google-cloud/vision');
 const { Buffer } = require('buffer');
 const busboy = require('busboy');
@@ -51,55 +50,20 @@ exports.handler = async (event) => {
     };
   }
 
-  const busboyInstance = busboy({ headers: event.headers });
-  const formData = {};
+  const bb = busboy({ headers: event.headers });
+  let buffer = null;
 
   return new Promise((resolve, reject) => {
-    busboyInstance.on('file', (fieldname, file, filename, encoding, mimeType) => {
+    bb.on('file', (fieldname, file, filename, encoding, mimeType) => {
       const buffers = [];
       file.on('data', (data) => buffers.push(data));
-      file.on('end', async () => {
-        try {
-          const buffer = Buffer.concat(buffers);
-          const phoneNumbers = await googleVisionApi(buffer);
-          if (phoneNumbers.length === 0) {
-            return resolve({
-              statusCode: 400,
-              headers: {
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Headers': 'Content-Type',
-                'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-              },
-              body: JSON.stringify({ message: 'No valid phone numbers found' }),
-            });
-          }
-          return resolve({
-            statusCode: 200,
-            headers: {
-              'Access-Control-Allow-Origin': '*',
-              'Access-Control-Allow-Headers': 'Content-Type',
-              'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-            },
-            body: JSON.stringify({ phoneNumbers }),
-          });
-        } catch (error) {
-          console.error('Error processing image:', error.message);
-          return resolve({
-            statusCode: 500,
-            headers: {
-              'Access-Control-Allow-Origin': '*',
-              'Access-Control-Allow-Headers': 'Content-Type',
-              'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-            },
-            body: JSON.stringify({ message: 'Error processing the image', error: error.message }),
-          });
-        }
+      file.on('end', () => {
+        buffer = Buffer.concat(buffers);
       });
     });
 
-    busboyInstance.on('finish', () => {
-      // Handle case when no file is uploaded
-      if (!Object.keys(formData).length) {
+    bb.on('finish', async () => {
+      if (!buffer) {
         return resolve({
           statusCode: 400,
           headers: {
@@ -110,8 +74,43 @@ exports.handler = async (event) => {
           body: JSON.stringify({ message: 'No file uploaded' }),
         });
       }
+
+      try {
+        const phoneNumbers = await googleVisionApi(buffer);
+        if (phoneNumbers.length === 0) {
+          return resolve({
+            statusCode: 400,
+            headers: {
+              'Access-Control-Allow-Origin': '*',
+              'Access-Control-Allow-Headers': 'Content-Type',
+              'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+            },
+            body: JSON.stringify({ message: 'No valid phone numbers found' }),
+          });
+        }
+        return resolve({
+          statusCode: 200,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Headers': 'Content-Type',
+            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+          },
+          body: JSON.stringify({ phoneNumbers }),
+        });
+      } catch (error) {
+        console.error('Error processing image:', error.message);
+        return resolve({
+          statusCode: 500,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Headers': 'Content-Type',
+            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+          },
+          body: JSON.stringify({ message: 'Error processing the image', error: error.message }),
+        });
+      }
     });
 
-    event.body.pipe(busboyInstance);
+    bb.end(Buffer.from(event.body, event.isBase64Encoded ? 'base64' : 'utf8'));
   });
 };
