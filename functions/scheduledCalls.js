@@ -9,7 +9,7 @@ MongoClient.connect(uri, { useNewUrlParser: true, useUnifiedTopology: true })
   .then(client => {
     db = client.db('phonescanner');
   })
-  .catch(err => console.error('Error connecting to MongoDB:', err));
+  .catch(err => console.log('Error connecting to MongoDB:', err));
 
 exports.handler = async (event) => {
   if (event.httpMethod !== 'GET') {
@@ -36,7 +36,7 @@ exports.handler = async (event) => {
       body: JSON.stringify(calls),
     };
   } catch (error) {
-    console.error('Error fetching scheduled calls:', error.message);
+    console.log('Error fetching scheduled calls:', error.message);
     return {
       statusCode: 500,
       headers: {
