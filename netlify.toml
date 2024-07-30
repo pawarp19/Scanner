@@ -4,7 +4,6 @@
 
 [functions]
   directory = "functions"
-  
-[functions.scheduled]
-  name = "scheduled-calls"
-  schedule = "*/1 * * * *"
+  [functions.scheduled]
+    name = "scheduled-calls"
+    schedule = "*/1 * * * *"
