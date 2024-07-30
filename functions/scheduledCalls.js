@@ -7,16 +7,15 @@ let db;
 
 MongoClient.connect(uri, { useNewUrlParser: true, useUnifiedTopology: true })
   .then(client => {
-    console.log('Connected to MongoDB');
     db = client.db('phonescanner');
   })
   .catch(err => console.error('Error connecting to MongoDB:', err));
 
-exports.handler = async function(event, context) {
+exports.handler = async (event) => {
   if (event.httpMethod !== 'GET') {
     return {
       statusCode: 405,
-      body: JSON.stringify({ message: 'Method Not Allowed' })
+      body: JSON.stringify({ message: 'Method Not Allowed' }),
     };
   }
 
@@ -24,12 +23,13 @@ exports.handler = async function(event, context) {
     const calls = await db.collection('scheduledCalls').find().toArray();
     return {
       statusCode: 200,
-      body: JSON.stringify(calls)
+      body: JSON.stringify(calls),
     };
   } catch (error) {
+    console.error('Error fetching scheduled calls:', error.message);
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: 'Failed to fetch scheduled calls' })
+      body: JSON.stringify({ error: 'Failed to fetch scheduled calls' }),
     };
   }
 };

@@ -1,11 +1,41 @@
 // functions/upload.js
-const { googleVisionApi } = require('./utils');
+const multer = require('multer');
+const { ImageAnnotatorClient } = require('@google-cloud/vision');
+const { Buffer } = require('buffer');
+require('dotenv').config();
 
-exports.handler = async function(event, context) {
+const upload = multer({ storage: multer.memoryStorage() });
+const visionClient = new ImageAnnotatorClient({
+  credentials: JSON.parse(Buffer.from(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON, 'base64').toString('utf-8')),
+});
+
+const googleVisionApi = async (buffer) => {
+  try {
+    const [result] = await visionClient.textDetection({ image: { content: buffer } });
+    const detections = result.textAnnotations;
+    if (detections.length > 0) {
+      const parsedText = detections[0].description;
+      console.log('Extracted Text:', parsedText);
+      return extractPhoneNumbers(parsedText);
+    } else {
+      throw new Error('No text detected');
+    }
+  } catch (error) {
+    console.error('Error during text detection:', error.message);
+    throw error;
+  }
+};
+
+const extractPhoneNumbers = (text) => {
+  const allNumbers = text.match(/\d{10}/g) || [];
+  return allNumbers;
+};
+
+exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') {
     return {
       statusCode: 405,
-      body: JSON.stringify({ message: 'Method Not Allowed' })
+      body: JSON.stringify({ message: 'Method Not Allowed' }),
     };
   }
 
@@ -19,12 +49,13 @@ exports.handler = async function(event, context) {
     }
     return {
       statusCode: 200,
-      body: JSON.stringify({ phoneNumbers })
+      body: JSON.stringify({ phoneNumbers }),
     };
   } catch (error) {
+    console.error('Error processing image:', error.message);
     return {
       statusCode: 500,
-      body: JSON.stringify({ message: 'Error processing the image', error: error.message })
+      body: JSON.stringify({ message: 'Error processing the image', error: error.message }),
     };
   }
 };

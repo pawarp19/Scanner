@@ -1,5 +1,6 @@
 // functions/balance.js
 const axios = require('axios');
+require('dotenv').config();
 
 const fetchBulkSmsBalance = async () => {
   try {
@@ -22,11 +23,11 @@ const fetchBulkSmsBalance = async () => {
   }
 };
 
-exports.handler = async function(event, context) {
+exports.handler = async (event) => {
   if (event.httpMethod !== 'GET') {
     return {
       statusCode: 405,
-      body: JSON.stringify({ message: 'Method Not Allowed' })
+      body: JSON.stringify({ message: 'Method Not Allowed' }),
     };
   }
 
@@ -34,12 +35,13 @@ exports.handler = async function(event, context) {
     const balance = await fetchBulkSmsBalance();
     return {
       statusCode: 200,
-      body: JSON.stringify({ balance })
+      body: JSON.stringify({ balance }),
     };
   } catch (error) {
+    console.error('Failed to fetch balance:', error.message);
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: 'Failed to fetch balance' })
+      body: JSON.stringify({ error: 'Failed to fetch balance' }),
     };
   }
 };
